@@ -80,30 +80,35 @@ class GetStringsParse {
   }
 
   List<ExtractedString>? run(srcDirectory) {
+    List<ExtractedString>? extractedStrings;
     if (srcDirectory != null) {
       final paths = Directory(srcDirectory.path).listSync(recursive: true);
       log.info(Directory(paths.join('\n')));
-      for (var f in Directory(srcDirectory.path).listSync(recursive: true)) {
-        if (f is File && f.path.endsWith(".dart") && !_checkFileInExcludes(f)) {
-          return _processFile(f);
-        } else if (f is Directory) {
-          run(f);
+
+      Stream<File> scannedFiles =
+          scanningFilesWithAsyncRecursive(Directory(srcDirectory.path));
+
+      scannedFiles.listen((File f) {
+        if (f.path.endsWith(".dart") && !_checkFileInExcludes(f)) {
+          extractedStrings = _processFile(f);
+        }
+      });
+    }
+    return extractedStrings;
+  }
+
+  Stream<File> scanningFilesWithAsyncRecursive(Directory dir) async* {
+    var dirList = dir.list();
+    await for (final FileSystemEntity entity in dirList) {
+      if (entity is File) {
+        yield entity;
+      } else if (entity is Directory) {
+        if (!_checkDirectoryInExcludes(entity)) {
+          yield* scanningFilesWithAsyncRecursive(Directory(entity.path));
         }
       }
     }
-    return null;
   }
-
-  // Stream<File> scanningFilesWithAsyncRecursive(Directory dir) async* {
-
-  // var dirList = dir.list();
-  // await for (final FileSystemEntity entity in dirList) {
-  //   if (entity is File) {
-  //     yield entity;
-  //   } else if (entity is Directory){
-  //     yield* scanningFilesWithAsyncRecursive(Directory(entity.path));
-  //   }
-  // }
 
   List<ExtractedString> _processFile(File f) {
     return _processString(f.readAsStringSync(), fileName: f.path);
@@ -122,6 +127,19 @@ class GetStringsParse {
     if (excludeConfig != null) {
       for (var configItems in excludeConfig!.excludeItems) {
         if (configItems.path == f.path) {
+          result = true;
+          break;
+        }
+      }
+    }
+    return result;
+  }
+
+  bool _checkDirectoryInExcludes(Directory d) {
+    var result = false;
+    if (excludeConfig != null) {
+      for (var configItems in excludeConfig!.excludeItems) {
+        if (configItems.path.contains(d.path)) {
           result = true;
           break;
         }
