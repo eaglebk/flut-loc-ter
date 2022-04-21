@@ -1,8 +1,7 @@
 excludes:
   path:
-    - "/Users/Dev/workspace/flut-loc-ter/flut_loc_ter/src/yaml_parse.dart"
-    - "/Users/Dev/workspace/flut-loc-ter/flut_loc_ter/.dart_tool"
     - ".git"
+    - "util"
 
   prefix_excludes:
     - "import"

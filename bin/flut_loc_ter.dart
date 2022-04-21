@@ -34,7 +34,7 @@ Future<void> main(List<String> arguments) async {
   await getStringsParse.processExcludeConfig(excludeFileConfig);
   final srcDirectory = getStringsParse.processSrcDirectory(srcDirectoryPath);
   if (srcDirectory != null) {
-    final extractedStrings = getStringsParse.run(srcDirectory);
+    final extractedStrings = await getStringsParse.run(srcDirectory);
     log.info(extractedStrings?.map((e) => e.string).toList());
     log.fine(extractedStrings?.length);
   }

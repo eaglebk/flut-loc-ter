@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -5,6 +6,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path;
 
 import 'model/exclude_config.dart';
 import 'model/extracted_string.dart';
@@ -79,8 +81,9 @@ class GetStringsParse {
     return ExcludeConfig(pathEntries, excludePrefix);
   }
 
-  List<ExtractedString>? run(srcDirectory) {
+  FutureOr run(srcDirectory) {
     List<ExtractedString>? extractedStrings;
+    Completer completer = Completer();
     if (srcDirectory != null) {
       final paths = Directory(srcDirectory.path).listSync(recursive: true);
       log.info(Directory(paths.join('\n')));
@@ -90,11 +93,13 @@ class GetStringsParse {
 
       scannedFiles.listen((File f) {
         if (f.path.endsWith(".dart") && !_checkFileInExcludes(f)) {
-          extractedStrings = _processFile(f);
+          extractedStrings?.addAll(_processFile(f));
         }
+      }).onDone(() {
+        completer.complete(extractedStrings);
       });
     }
-    return extractedStrings;
+    return completer.future;
   }
 
   Stream<File> scanningFilesWithAsyncRecursive(Directory dir) async* {
@@ -139,7 +144,8 @@ class GetStringsParse {
     var result = false;
     if (excludeConfig != null) {
       for (var configItems in excludeConfig!.excludeItems) {
-        if (configItems.path.contains(d.path)) {
+        if ((configItems.path == path.basenameWithoutExtension(d.path)) ||
+            configItems.path == d.path.split('\\').last) {
           result = true;
           break;
         }
