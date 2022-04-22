@@ -9,7 +9,7 @@
             "name": "flut_loc_ter",
             "program": "bin/flut_loc_ter.dart",
             "request": "launch",
-            "args": ["-e", "D:/Dev/workspace/dart/flut-loc-ter/assert/exclude.yaml", "-s", "D:/Dev/workspace/dart/flut-loc-ter/src"],
+            "args": ["-e", "/Users/Dev/workspace/flut-loc-ter/flut_loc_ter/assert/exclude.yaml", "-s", "/Users/Dev/workspace/flut-loc-ter/flut_loc_ter/src"],
             "type": "dart"
         },
 

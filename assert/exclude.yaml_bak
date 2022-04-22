@@ -1,3 +1,6 @@
+rules:
+  - "ru_only"
+
 excludes:
   path:
     - ".git"
@@ -12,3 +15,12 @@ excludes:
     - "s"
     - "."
     - ","
+    - "\\"
+    - "/"
+    - ".dart"
+    - "dart"
+    - " "
+    - "GetStringsParse"
+    - "excludes"
+    - "path"
+    - "[ЁёА-я].*"

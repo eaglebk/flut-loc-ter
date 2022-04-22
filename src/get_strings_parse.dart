@@ -8,20 +8,21 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
-import 'model/exclude_config.dart';
+import 'model/parse_config.dart';
 import 'model/extracted_string.dart';
 import 'yaml_parse.dart';
 
 class GetStringsParse {
   final log = Logger('GetStringsParse');
-  ExcludeConfig? excludeConfig;
+  ParseConfig? parseConfig;
+  Set<ExtractedString> extractedStrings = {};
 
-  Future processExcludeConfig(excludeFileConfig) async {
-    if (excludeFileConfig?.isEmpty ?? true) {
-      Logger.root.fine('Сonfiguration exceptions not found');
+  Future processExcludeConfig(fileConfig) async {
+    if (fileConfig?.isEmpty ?? true) {
+      Logger.root.fine('Configuration exceptions not found');
     } else {
-      if (await File(excludeFileConfig!).exists()) {
-        final content = File(excludeFileConfig!).readAsStringSync();
+      if (await File(fileConfig!).exists()) {
+        final content = File(fileConfig!).readAsStringSync();
         Map<String, dynamic> configMap = {};
         try {
           configMap = loadYamlAsMap(content)!;
@@ -29,16 +30,18 @@ class GetStringsParse {
           log.shout(e);
         }
 
-        final List<String> pathNames =
+        final List<String> excludesPathNames =
             configMap['excludes']['path'].cast<String>();
         final List<String> excludePrefix =
             configMap['excludes']['prefix_excludes'].cast<String>();
+        final List<String> rules = configMap['rules'].cast<String>();
 
-        excludeConfig = _processPathsNames(pathNames, excludePrefix);
-        log.fine(excludeConfig);
+        parseConfig =
+            _processPathsNames(excludesPathNames, excludePrefix, rules);
+        log.fine(parseConfig);
       } else {
         log.shout(
-            'exclude-congfig-file agrument $excludeFileConfig is not path or not exists');
+            'congfig-file argument $fileConfig is not path or not exists');
       }
     }
   }
@@ -48,7 +51,7 @@ class GetStringsParse {
     if (srcDirectory != null) {
       if (FileSystemEntity.isDirectorySync(srcDirectory)) {
         resultDirectory = Directory(srcDirectory);
-        Logger.root.fine(srcDirectory);
+        // Logger.root.fine(srcDirectory);
       } else {
         Logger.root.shout('$srcDirectory is not directory');
       }
@@ -60,16 +63,17 @@ class GetStringsParse {
     return resultDirectory;
   }
 
-  ExcludeConfig _processPathsNames(pathNames, List<String> excludePrefix) {
+  ParseConfig _processPathsNames(
+      pathNames, List<String> excludePrefix, List<String> rules) {
     final pathEntries = <PathEntry>[];
 
     for (var p in pathNames) {
       PathType? pathType;
       if (FileSystemEntity.isFileSync(p)) {
-        Logger.root.fine('$p is file');
+        // Logger.root.fine('$p is file');
         pathType = PathType.file;
       } else if (FileSystemEntity.isDirectorySync(p)) {
-        Logger.root.fine('$p is direcory');
+        // Logger.root.fine('$p is direcory');
         pathType = PathType.directory;
       }
 
@@ -78,41 +82,25 @@ class GetStringsParse {
       }
     }
 
-    return ExcludeConfig(pathEntries, excludePrefix);
+    return ParseConfig(pathEntries, excludePrefix, rules);
   }
 
-  FutureOr run(srcDirectory) {
-    List<ExtractedString>? extractedStrings;
-    Completer completer = Completer();
+  Set<ExtractedString>? run(srcDirectory) {
     if (srcDirectory != null) {
       final paths = Directory(srcDirectory.path).listSync(recursive: true);
-      log.info(Directory(paths.join('\n')));
-
-      Stream<File> scannedFiles =
-          scanningFilesWithAsyncRecursive(Directory(srcDirectory.path));
-
-      scannedFiles.listen((File f) {
-        if (f.path.endsWith(".dart") && !_checkFileInExcludes(f)) {
-          extractedStrings?.addAll(_processFile(f));
-        }
-      }).onDone(() {
-        completer.complete(extractedStrings);
-      });
-    }
-    return completer.future;
-  }
-
-  Stream<File> scanningFilesWithAsyncRecursive(Directory dir) async* {
-    var dirList = dir.list();
-    await for (final FileSystemEntity entity in dirList) {
-      if (entity is File) {
-        yield entity;
-      } else if (entity is Directory) {
-        if (!_checkDirectoryInExcludes(entity)) {
-          yield* scanningFilesWithAsyncRecursive(Directory(entity.path));
+      for (var path in paths) {
+        if (path is File) {
+          if (path.path.endsWith(".dart") && !_checkFileInExcludes(path)) {
+            extractedStrings.addAll(_processFile(path));
+          }
+        } else if (path is Directory) {
+          if (!_checkDirectoryInExcludes(path)) {
+            run(path);
+          }
         }
       }
     }
+    return extractedStrings;
   }
 
   List<ExtractedString> _processFile(File f) {
@@ -122,15 +110,16 @@ class GetStringsParse {
   List<ExtractedString> _processString(String s, {fileName = ""}) {
     CompilationUnit unit =
         parseString(content: s, throwIfDiagnostics: false).unit;
-    var extractor = StringExtractor(s, fileName, excludeConfig?.excludePrefix);
+    var extractor = StringExtractor(
+        s, fileName, parseConfig?.excludePrefix, parseConfig?.rules);
     unit.visitChildren(extractor);
     return extractor.strings;
   }
 
   bool _checkFileInExcludes(File f) {
     var result = false;
-    if (excludeConfig != null) {
-      for (var configItems in excludeConfig!.excludeItems) {
+    if (parseConfig != null) {
+      for (var configItems in parseConfig!.excludeItems) {
         if (configItems.path == f.path) {
           result = true;
           break;
@@ -142,8 +131,8 @@ class GetStringsParse {
 
   bool _checkDirectoryInExcludes(Directory d) {
     var result = false;
-    if (excludeConfig != null) {
-      for (var configItems in excludeConfig!.excludeItems) {
+    if (parseConfig != null) {
+      for (var configItems in parseConfig!.excludeItems) {
         if ((configItems.path == path.basenameWithoutExtension(d.path)) ||
             configItems.path == d.path.split('\\').last) {
           result = true;
@@ -160,8 +149,9 @@ class StringExtractor extends UnifyingAstVisitor<void> {
   final String source;
   final String fileName;
   final List<String>? excludePrefixes;
+  final List<String>? rules;
 
-  StringExtractor(this.source, this.fileName, this.excludePrefixes);
+  StringExtractor(this.source, this.fileName, this.excludePrefixes, this.rules);
 
   @override
   void visitNode(AstNode node) {
@@ -181,7 +171,11 @@ class StringExtractor extends UnifyingAstVisitor<void> {
 
   void _handleString(StringLiteral node) {
     if (node.stringValue != null) {
-      if (_handlePrefixRules(node)) {
+      if (ParseConfig.checkStringRulesMatch(node.stringValue, rules)) {
+        if (_handleConfigRules(node)) {
+          return;
+        }
+      } else {
         return;
       }
 
@@ -192,11 +186,12 @@ class StringExtractor extends UnifyingAstVisitor<void> {
     }
   }
 
-  bool _handlePrefixRules(StringLiteral node) {
+  bool _handleConfigRules(StringLiteral node) {
     Token? here = node.parent?.beginToken;
 
     if ((excludePrefixes?.contains(here?.type.lexeme) ?? false) ||
-        (excludePrefixes?.contains(node.stringValue) ?? false)) {
+        (excludePrefixes?.contains(node.stringValue) ?? false) ||
+        (node.stringValue?.trim().isEmpty ?? false)) {
       return true;
     }
 
