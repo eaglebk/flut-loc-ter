@@ -35,9 +35,11 @@ class GetStringsParse {
         final List<String> excludePrefix =
             configMap['excludes']['prefix_excludes'].cast<String>();
         final List<String> rules = configMap['rules'].cast<String>();
+        final Map<String, String> contextMapping =
+            configMap['context_mapping'].cast<String, String>();
 
-        parseConfig =
-            _processPathsNames(excludesPathNames, excludePrefix, rules);
+        parseConfig = _processPathsNames(
+            excludesPathNames, excludePrefix, rules, contextMapping);
         log.fine(parseConfig);
       } else {
         log.shout(
@@ -63,8 +65,8 @@ class GetStringsParse {
     return resultDirectory;
   }
 
-  ParseConfig _processPathsNames(
-      pathNames, List<String> excludePrefix, List<String> rules) {
+  ParseConfig _processPathsNames(pathNames, List<String> excludePrefix,
+      List<String> rules, Map<String, String> contextMapping) {
     final pathEntries = <PathEntry>[];
 
     for (var p in pathNames) {
@@ -82,7 +84,7 @@ class GetStringsParse {
       }
     }
 
-    return ParseConfig(pathEntries, excludePrefix, rules);
+    return ParseConfig(pathEntries, excludePrefix, rules, contextMapping);
   }
 
   Set<ExtractedString>? run(srcDirectory) {
@@ -110,8 +112,8 @@ class GetStringsParse {
   List<ExtractedString> _processString(String s, {fileName = ""}) {
     CompilationUnit unit =
         parseString(content: s, throwIfDiagnostics: false).unit;
-    var extractor = StringExtractor(
-        s, fileName, parseConfig?.excludePrefix, parseConfig?.rules);
+    var extractor = StringExtractor(s, fileName, parseConfig?.excludePrefix,
+        parseConfig?.rules, parseConfig?.contextMap);
     unit.visitChildren(extractor);
     return extractor.strings;
   }
@@ -149,9 +151,11 @@ class StringExtractor extends UnifyingAstVisitor<void> {
   final String source;
   final String fileName;
   final List<String>? excludePrefixes;
+  final Map<String, String>? contextMap;
   final List<String>? rules;
 
-  StringExtractor(this.source, this.fileName, this.excludePrefixes, this.rules);
+  StringExtractor(this.source, this.fileName, this.excludePrefixes, this.rules,
+      this.contextMap);
 
   @override
   void visitNode(AstNode node) {
@@ -180,8 +184,20 @@ class StringExtractor extends UnifyingAstVisitor<void> {
       }
 
       var lineNo = "\n".allMatches(source.substring(0, node.offset)).length + 1;
-      final ExtractedString s =
-          ExtractedString(node.stringValue!, lineNo, sourceFile: fileName);
+
+      String? context;
+
+      if (contextMap?.isNotEmpty ?? false) {
+        for (var entry in contextMap!.entries) {
+          if (fileName.contains(entry.key)) {
+            context = entry.value;
+            break;
+          }
+        }
+      }
+
+      final ExtractedString s = ExtractedString(node.stringValue!, lineNo,
+          sourceFile: fileName, context: context);
       strings.add(s);
     }
   }

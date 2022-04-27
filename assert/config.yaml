@@ -33,3 +33,29 @@ excludes:
     - "[ЁёА-я].*"
     - '^([ёa-zA-ZА-Яа-я "-])+$'
     - '^([ёa-zA-ZА-Яа-я "-])+$'
+
+# Мапинг контекста и имени файла
+# см. описание в README.md - Извлечение контекста
+context_mapping:
+  "screens/chat_bot": "Чат бот"
+  "screens/devices": "Профиль/Устройства"
+  "screens/devices_dialog": "Главная/Диалог выбора устройств"
+  "screens/dynamic": "Профиль/Динамика"
+  "screens/ecg": "ЭКГ"
+  "screens/firmware_update": "Прошивка"
+  "screens/friends": "Главная/Ближний круг"
+  "screens/happy_reg_dialog": "Успешная регистрация"
+  "screens/health_map": "Профиль/Карта здоровья"
+  "screens/health_survey": "Профиль/Анкета здоровья"
+  "screens/help_screen": "Помощь"
+  "screens/main": "Главная"
+  "screens/measurement_history": "Главная/История измерений"
+  "screens/metric_detail": "Главная/Детализация по замеру"
+  "screens/news_feed_screen": "Новости"
+  "screens/profile": "Профиль"
+  "screens/recomendation": "Рекомендации"
+  "screens/reg_login": "Регистрация/Логин"
+  "screens/settings": "Настройки"
+  "screens/start_measuring_stepper": "Замер"
+  "screens/subscribe": "Профиль/Подписка"
+  "screens/super_user": "Профиль/Скрытые возможности"

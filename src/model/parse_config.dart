@@ -10,8 +10,10 @@ class ParseConfig {
   final List<PathEntry> excludeItems;
   final List<String>? excludePrefix;
   final List<String>? rules;
+  final Map<String, String>? contextMap;
 
-  ParseConfig(this.excludeItems, this.excludePrefix, this.rules);
+  ParseConfig(
+      this.excludeItems, this.excludePrefix, this.rules, this.contextMap);
 
   static bool checkStringRulesMatch(String? text, List<String>? configRules) {
     if (text != null) {

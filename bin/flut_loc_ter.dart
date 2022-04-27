@@ -42,7 +42,8 @@ Future<void> main(List<String> arguments) async {
 
   parser.addFlag(exportSql,
       abbr: 'i',
-      callback: (value) => exportToSql = false,
+      defaultsTo: true,
+      callback: (value) => exportToSql = value,
       help: 'Ignore sqllite export');
 
   parser.addFlag(help,
@@ -69,9 +70,11 @@ Future<void> main(List<String> arguments) async {
       log.fine('Strings not found!!!');
     } else {
       log.info(extractedStrings
-          ?.map((e) => '${e.string} -> ${e.sourceFile}  [${e.lineNumber}]')
+          ?.map((e) =>
+              '${e.string} -> ${e.sourceFile}  [${e.lineNumber}] ${e.context}')
           .toList()
           .join('\n'));
+
       log.fine(extractedStrings?.length);
     }
 
