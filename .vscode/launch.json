@@ -9,7 +9,7 @@
             "name": "flut_loc_ter",
             "program": "bin/flut_loc_ter.dart",
             "request": "launch",
-            "args": ["-e", "/Users/Dev/workspace/flut-loc-ter/flut_loc_ter/assert/exclude.yaml", "-s", "/Users/Dev/workspace/flut-loc-ter/flut_loc_ter/src"],
+            "args": ["-c", "/Users/Dev/workspace/flut-loc-ter/flut_loc_ter/assert/config.yaml", "-s", "/Users/Dev/workspace/nova_health_mobile/lib/src/screens"],
             "type": "dart"
         },
 
