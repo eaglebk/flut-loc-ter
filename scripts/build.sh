@@ -1,0 +1,1 @@
+dart compile exe bin/flut_loc_ter.dart -o flt
